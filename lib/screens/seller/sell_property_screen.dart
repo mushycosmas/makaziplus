@@ -11,19 +11,76 @@ class SellPropertyScreen extends StatefulWidget {
 class _SellPropertyScreenState extends State<SellPropertyScreen> {
   final _formKey = GlobalKey<FormState>();
 
+  // BASIC INFO
   final titleController = TextEditingController();
   final priceController = TextEditingController();
-  final locationController = TextEditingController();
   final descriptionController = TextEditingController();
 
+  // LOCATION
+  String country = "Tanzania";
+  String region = "Dar es Salaam";
+  String district = "Kinondoni";
+  String? ward;
+
+  final Map<String, List<String>> regions = {
+    "Dar es Salaam": ["Kinondoni", "Ilala", "Temeke", "Ubungo"],
+    "Arusha": ["Arusha City", "Meru", "Karatu"],
+    "Mwanza": ["Nyamagana", "Ilemela"],
+    "Dodoma": ["Dodoma Urban", "Chamwino"],
+  };
+
+  final Map<String, List<String>> wards = {
+    "Kinondoni": ["Mikocheni", "Kijitonyama", "Mbezi"],
+    "Ilala": ["Upanga", "Buguruni"],
+    "Temeke": ["Mbagala", "Kurasini"],
+  };
+
+  // PROPERTY DETAILS
+  final bedroomsController = TextEditingController();
+  final bathroomsController = TextEditingController();
+  final sizeController = TextEditingController();
+  final yearBuiltController = TextEditingController();
+
+  // SELLER
+  final sellerNameController = TextEditingController();
+  final phoneController = TextEditingController();
+
   String propertyType = "House";
+  String listingType = "Sale";
+
+  final List<String> allAmenities = [
+    "WiFi",
+    "Parking",
+    "Swimming Pool",
+    "Security",
+    "Gym",
+    "Garden",
+    "Elevator",
+  ];
+
+  final Set<String> selectedAmenities = {};
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    priceController.dispose();
+    descriptionController.dispose();
+    bedroomsController.dispose();
+    bathroomsController.dispose();
+    sizeController.dispose();
+    yearBuiltController.dispose();
+    sellerNameController.dispose();
+    phoneController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isLand = propertyType == "Land";
+
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
 
-      // APP BAR
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -45,13 +102,13 @@ class _SellPropertyScreenState extends State<SellPropertyScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
 
-              // 🔥 HEADER CARD
+              // HEADER
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: const Color(0xFF22C55E),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,10 +123,8 @@ class _SellPropertyScreenState extends State<SellPropertyScreen> {
                     ),
                     SizedBox(height: 6),
                     Text(
-                      "Reach thousands of buyers instantly",
-                      style: TextStyle(
-                        color: Colors.white70,
-                      ),
+                      "Reach thousands of buyers & renters",
+                      style: TextStyle(color: Colors.white70),
                     ),
                   ],
                 ),
@@ -77,70 +132,176 @@ class _SellPropertyScreenState extends State<SellPropertyScreen> {
 
               const SizedBox(height: 20),
 
-              // 🏡 TITLE
-              _input(
-                controller: titleController,
-                icon: Iconsax.home,
-                hint: "Property Title",
-              ),
+              // TITLE
+              _input(titleController, Iconsax.home, "Property Title"),
+              const SizedBox(height: 10),
 
-              const SizedBox(height: 12),
-
-              // 💰 PRICE
-              _input(
-                controller: priceController,
-                icon: Iconsax.money,
-                hint: "Price (TZS)",
-                keyboard: TextInputType.number,
-              ),
-
-              const SizedBox(height: 12),
-
-              // 📍 LOCATION
-              _input(
-                controller: locationController,
-                icon: Iconsax.location,
-                hint: "Location",
-              ),
+              _input(priceController, Iconsax.money, "Price (TZS)",
+                  type: TextInputType.number),
 
               const SizedBox(height: 20),
 
-              // 🏠 TYPE
+              // LOCATION
               const Text(
-                "Property Type",
+                "Location",
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 10),
 
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: DropdownButton<String>(
-                  value: propertyType,
-                  isExpanded: true,
-                  underline: const SizedBox(),
-                  items: const [
-                    DropdownMenuItem(value: "House", child: Text("House")),
-                    DropdownMenuItem(value: "Apartment", child: Text("Apartment")),
-                    DropdownMenuItem(value: "Land", child: Text("Land")),
-                    DropdownMenuItem(value: "Office", child: Text("Office")),
-                    DropdownMenuItem(value: "Shop", child: Text("Shop")),
-                  ],
+              // COUNTRY
+              _simpleBox("Tanzania", Icons.public),
+
+              const SizedBox(height: 10),
+
+              // REGION
+              _dropdown(
+                value: region,
+                items: regions.keys.toList(),
+                onChanged: (value) {
+                  setState(() {
+                    region = value!;
+                    district = regions[value]!.first;
+                    ward = null;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 10),
+
+              // DISTRICT
+              _dropdown(
+                value: district,
+                items: regions[region]!,
+                onChanged: (value) {
+                  setState(() {
+                    district = value!;
+                    ward = null;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 10),
+
+              // WARD
+              if (wards.containsKey(district))
+                _dropdown(
+                  value: ward,
+                  items: wards[district]!,
+                  hint: "Select Ward",
                   onChanged: (value) {
-                    setState(() {
-                      propertyType = value!;
-                    });
+                    setState(() => ward = value!);
                   },
                 ),
+
+              const SizedBox(height: 20),
+
+              // PROPERTY TYPE
+              const Text(
+                "Property Type",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+
+              DropdownButtonFormField<String>(
+                value: propertyType,
+                items: const [
+                  DropdownMenuItem(value: "House", child: Text("House")),
+                  DropdownMenuItem(value: "Apartment", child: Text("Apartment")),
+                  DropdownMenuItem(value: "Land", child: Text("Land")),
+                  DropdownMenuItem(value: "Office", child: Text("Office")),
+                  DropdownMenuItem(value: "Shop", child: Text("Shop")),
+                ],
+                onChanged: (value) {
+                  setState(() => propertyType = value!);
+                },
               ),
 
               const SizedBox(height: 20),
 
-              // 📝 DESCRIPTION
+              // DETAILS (HIDDEN FOR LAND)
+              if (!isLand) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: _input(
+                        bedroomsController,
+                        Icons.bed,
+                        "Beds",
+                        type: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _input(
+                        bathroomsController,
+                        Icons.bathroom,
+                        "Baths",
+                        type: TextInputType.number,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                _input(sizeController, Icons.square_foot, "Size (sqm)",
+                    type: TextInputType.number),
+
+                const SizedBox(height: 10),
+
+                _input(yearBuiltController, Icons.calendar_today,
+                    "Year Built",
+                    type: TextInputType.number),
+
+                const SizedBox(height: 20),
+              ],
+
+              // AMENITIES
+              const Text(
+                "Amenities",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 10),
+
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: allAmenities.map((item) {
+                  final selected = selectedAmenities.contains(item);
+
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selected
+                            ? selectedAmenities.remove(item)
+                            : selectedAmenities.add(item);
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? const Color(0xFF22C55E)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFF22C55E)),
+                      ),
+                      child: Text(
+                        item,
+                        style: TextStyle(
+                          color: selected ? Colors.white : Colors.black,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 20),
+
+              // DESCRIPTION
               const Text(
                 "Description",
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -162,39 +323,9 @@ class _SellPropertyScreenState extends State<SellPropertyScreen> {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 25),
 
-              // 📸 IMAGE UPLOAD UI
-              const Text(
-                "Photos",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-
-              const SizedBox(height: 10),
-
-              Container(
-                height: 120,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Iconsax.gallery_add, size: 30, color: Colors.grey),
-                      SizedBox(height: 8),
-                      Text("Upload Images"),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // 🚀 SUBMIT BUTTON
+              // SUBMIT
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -214,10 +345,7 @@ class _SellPropertyScreenState extends State<SellPropertyScreen> {
                       );
                     }
                   },
-                  child: const Text(
-                    "Publish Property",
-                    style: TextStyle(fontSize: 16),
-                  ),
+                  child: const Text("Publish Property"),
                 ),
               ),
             ],
@@ -227,16 +355,60 @@ class _SellPropertyScreenState extends State<SellPropertyScreen> {
     );
   }
 
-  // 🔧 INPUT WIDGET (REUSABLE)
-  Widget _input({
-    required TextEditingController controller,
-    required IconData icon,
-    required String hint,
-    TextInputType keyboard = TextInputType.text,
+  // SIMPLE BOX
+  Widget _simpleBox(String text, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon),
+          const SizedBox(width: 10),
+          Text(text),
+        ],
+      ),
+    );
+  }
+
+  // DROPDOWN
+  Widget _dropdown({
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+    String? value,
+    String? hint,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: DropdownButton<String>(
+        value: value,
+        isExpanded: true,
+        underline: const SizedBox(),
+        hint: hint != null ? Text(hint) : null,
+        items: items
+            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+            .toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  // INPUT
+  Widget _input(
+    TextEditingController controller,
+    IconData icon,
+    String hint, {
+    TextInputType type = TextInputType.text,
   }) {
     return TextField(
       controller: controller,
-      keyboardType: keyboard,
+      keyboardType: type,
       decoration: InputDecoration(
         prefixIcon: Icon(icon),
         hintText: hint,
