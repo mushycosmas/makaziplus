@@ -5,7 +5,12 @@ import 'screens/home/splash_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: ".env");
+  try {
+    await dotenv.load(fileName: ".env");
+    print("ENV loaded successfully");
+  } catch (e) {
+    print("ENV load error: $e");
+  }
 
   runApp(const MyApp());
 }
