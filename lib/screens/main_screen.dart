@@ -10,6 +10,14 @@ import '../widgets/bottom_navbar.dart';
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
+  static late _MainScreenState instance;
+
+  static void changeTab(int index) {
+    instance.setState(() {
+      instance.currentIndex = index;
+    });
+  }
+
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
@@ -22,6 +30,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    MainScreen.instance = this;
 
     pages = [
       const HomeScreen(),

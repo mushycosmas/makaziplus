@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../screens/notifications/notification_screen.dart';
+
 class TopBar extends StatelessWidget {
   const TopBar({super.key});
 
@@ -8,17 +10,20 @@ class TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
+
         // MENU
         IconButton(
-          onPressed: () {},
+          onPressed: () {
+            Scaffold.of(context).openDrawer(); // optional if you use Drawer
+          },
           icon: const Icon(Icons.menu, size: 28),
         ),
 
-        // LOCATION (flexible to prevent overflow)
-        Expanded(
+        // LOCATION
+        const Expanded(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
+            children: [
               Icon(Iconsax.location, size: 18),
               SizedBox(width: 6),
 
@@ -43,8 +48,16 @@ class TopBar extends StatelessWidget {
         // NOTIFICATIONS
         Stack(
           children: [
+
             IconButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationScreen(),
+                  ),
+                );
+              },
               icon: const Icon(Icons.notifications_none, size: 28),
             ),
 
