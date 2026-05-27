@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/category_provider.dart';
 import '../../widgets/agent_card.dart';
 import '../../widgets/category_box.dart';
 import '../../widgets/hero_section.dart';
@@ -9,71 +11,64 @@ import '../../widgets/search_bar_widget.dart';
 import '../../widgets/section_title.dart';
 import '../../widgets/top_bar.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    /// ✅ SAFE: runs after first frame is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider =
+          Provider.of<CategoryProvider>(context, listen: false);
+
+      provider.fetchCategories();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
-              // TOP BAR
               const TopBar(),
               const SizedBox(height: 30),
 
-              // HERO
               const HeroSection(),
               const SizedBox(height: 30),
 
-              // SEARCH
               const SearchBarWidget(),
               const SizedBox(height: 30),
 
-              // PROPERTY TYPES
+              /// PROPERTY TYPES
               SizedBox(
                 height: 110,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: const [
-                    PropertyTypeCard(
-                      icon: Icons.home,
-                      title: "All",
-                      active: true,
-                    ),
-                    PropertyTypeCard(
-                      icon: Icons.home_outlined,
-                      title: "House",
-                    ),
-                    PropertyTypeCard(
-                      icon: Icons.apartment,
-                      title: "Apartment",
-                    ),
-                    PropertyTypeCard(
-                      icon: Icons.park,
-                      title: "Land",
-                    ),
-                    PropertyTypeCard(
-                      icon: Icons.business,
-                      title: "Office",
-                    ),
-                    PropertyTypeCard(
-                      icon: Icons.store,
-                      title: "Shop",
-                    ),
+                    PropertyTypeCard(icon: Icons.home, title: "All", active: true),
+                    PropertyTypeCard(icon: Icons.home_outlined, title: "House"),
+                    PropertyTypeCard(icon: Icons.apartment, title: "Apartment"),
+                    PropertyTypeCard(icon: Icons.park, title: "Land"),
+                    PropertyTypeCard(icon: Icons.business, title: "Office"),
+                    PropertyTypeCard(icon: Icons.store, title: "Shop"),
                   ],
                 ),
               ),
 
               const SizedBox(height: 30),
 
-              // FEATURED
               const SectionTitle(title: "Featured Properties"),
               const SizedBox(height: 20),
 
@@ -102,53 +97,73 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 30),
 
-              // CATEGORY
               const SectionTitle(title: "Browse by Category"),
               const SizedBox(height: 20),
 
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 15,
-                mainAxisSpacing: 15,
-                childAspectRatio: 1.2,
-                children: [
-                  CategoryBox(
-                    title: "Houses",
-                    listings: "120+ Listings",
-                    icon: Icons.home,
-                    color: Colors.green.shade50,
-                  ),
-                  CategoryBox(
-                    title: "Apartments",
-                    listings: "85+ Listings",
-                    icon: Icons.apartment,
-                    color: Colors.purple.shade50,
-                  ),
-                  CategoryBox(
-                    title: "Lands",
-                    listings: "150+ Listings",
-                    icon: Icons.landscape,
-                    color: Colors.orange.shade50,
-                  ),
-                  CategoryBox(
-                    title: "Commercial",
-                    listings: "60+ Listings",
-                    icon: Icons.business,
-                    color: Colors.blue.shade50,
-                  ),
-                ],
+              /// 🔥 CATEGORY SECTION (SAFE + STABLE)
+              Consumer<CategoryProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  if (provider.errorMessage != null) {
+                    return Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Center(
+                        child: Text(
+                          provider.errorMessage!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (provider.categories.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Center(
+                        child: Text("No categories found"),
+                      ),
+                    );
+                  }
+
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: provider.categories.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 15,
+                      mainAxisSpacing: 15,
+                      childAspectRatio: 1.2,
+                    ),
+                    itemBuilder: (context, index) {
+                      final category = provider.categories[index];
+
+                      return CategoryBox(
+                        category: category,
+                        color: Colors.green.shade50,
+                        onTap: () {
+                          debugPrint("Clicked: ${category.name}");
+                        },
+                      );
+                    },
+                  );
+                },
               ),
 
               const SizedBox(height: 30),
 
-              // AGENTS (FIXED)
               const SectionTitle(title: "Top Agents"),
               const SizedBox(height: 20),
 
               SizedBox(
-                height: 140, // ✅ FIXED HERE
+                height: 140,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: const [
