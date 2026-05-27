@@ -7,12 +7,15 @@ import 'screens/home/splash_screen.dart';
 
 import 'providers/category_provider.dart';
 import 'providers/property_provider.dart';
+import 'providers/agent_provider.dart';
 
 import 'repositories/category_repository.dart';
 import 'repositories/property_repository.dart';
+import 'repositories/agent_repository.dart';
 
 import 'services/category_service.dart';
 import 'services/property_service.dart';
+import 'services/agent_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +61,7 @@ Future<void> main() async {
   /// =========================
   final categoryService = CategoryService(dio: dio);
   final propertyService = PropertyService(dio: dio);
+  final agentService = AgentService(dio: dio);
 
   /// =========================
   /// REPOSITORIES
@@ -68,23 +72,40 @@ Future<void> main() async {
   final propertyRepository =
       PropertyRepository(service: propertyService);
 
+  final agentRepository =
+      AgentRepository(service: agentService);
+
   /// =========================
   /// RUN APP
   /// =========================
   runApp(
     MultiProvider(
       providers: [
+
+        /// =========================
         /// CATEGORY PROVIDER
+        /// =========================
         ChangeNotifierProvider(
           create: (_) => CategoryProvider(
             repository: categoryRepository,
           ),
         ),
 
-        /// PROPERTY PROVIDER (🔥 FIXED)
+        /// =========================
+        /// PROPERTY PROVIDER
+        /// =========================
         ChangeNotifierProvider(
           create: (_) => PropertyProvider(
             repository: propertyRepository,
+          ),
+        ),
+
+        /// =========================
+        /// AGENT PROVIDER
+        /// =========================
+        ChangeNotifierProvider(
+          create: (_) => AgentProvider(
+            repository: agentRepository,
           ),
         ),
       ],

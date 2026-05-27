@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../providers/category_provider.dart';
 import '../../providers/property_provider.dart';
+import '../../providers/agent_provider.dart';
 
-import '../../widgets/agent_card.dart';
 import '../../widgets/category_box.dart';
 import '../../widgets/hero_section.dart';
 import '../../widgets/property_card.dart';
@@ -12,6 +12,8 @@ import '../../widgets/property_type_card.dart';
 import '../../widgets/search_bar_widget.dart';
 import '../../widgets/section_title.dart';
 import '../../widgets/top_bar.dart';
+
+import '../../widgets/agent_section.dart'; // ✅ NEW IMPORT
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CategoryProvider>().fetchCategories();
       context.read<PropertyProvider>().fetchProperties();
+      context.read<AgentProvider>().fetchAgents();
     });
   }
 
@@ -89,14 +92,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       final p = propertyProvider.properties[index];
 
                       final imageUrl = (p.images.isNotEmpty)
-    ? "https://makazi.nono.co.tz/uploads/${p.images.first}"
-    : "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c";
+                          ? "https://makazi.nono.co.tz/uploads/${p.images.first}"
+                          : "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c";
 
                       return PropertyCard(
                         image: imageUrl,
                         title: p.title,
                         price: "TZS ${p.price}",
-                        location: p.status, // FIX enum safe
+                        location: p.status,
                       );
                     },
                   ),
@@ -142,33 +145,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 30),
 
-              /// AGENTS
-              const SectionTitle(title: "Top Agents"),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                height: 140,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: const [
-                    AgentCard(
-                      name: "John Mwita",
-                      properties: "25 Properties",
-                      rating: "4.8",
-                    ),
-                    AgentCard(
-                      name: "Neema Said",
-                      properties: "18 Properties",
-                      rating: "4.7",
-                    ),
-                    AgentCard(
-                      name: "Paul Mushi",
-                      properties: "30 Properties",
-                      rating: "4.9",
-                    ),
-                  ],
-                ),
-              ),
+              /// AGENTS (CLEAN + REUSABLE SECTION)
+              const AgentSection(),
             ],
           ),
         ),
