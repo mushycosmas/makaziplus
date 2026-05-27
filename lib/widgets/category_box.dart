@@ -35,51 +35,75 @@ class CategoryBox extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Container(
-          width: 140, // ✅ important for horizontal scroll
+          width: 145,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withOpacity(0.9),
+                color.withOpacity(0.6),
+              ],
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 15,
+                offset: const Offset(0, 6),
               )
             ],
           ),
+
+          // 🔥 CENTER CONTENT
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center, // ✅ FIXED
+
             children: [
-              Icon(
-                iconData,
-                color: Colors.black87,
-                size: 26,
+              /// ICON CONTAINER (CENTERED)
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.9),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  iconData,
+                  color: Colors.green.shade700,
+                  size: 22,
+                ),
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
+              /// CATEGORY NAME (CENTER)
               Text(
                 category.name,
+                textAlign: TextAlign.center, // ✅ FIXED
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
                 ),
               ),
 
               const SizedBox(height: 4),
 
+              /// LISTINGS (CENTER)
               Text(
                 "${category.totalProperties} Listings",
-                style: const TextStyle(
+                textAlign: TextAlign.center, // ✅ FIXED
+                style: TextStyle(
                   fontSize: 12,
-                  color: Colors.black54,
+                  color: Colors.black.withOpacity(0.6),
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],

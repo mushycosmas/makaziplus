@@ -20,23 +20,38 @@ class CategoryCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        curve: Curves.easeInOut,
+
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         margin: const EdgeInsets.only(right: 10),
+
         decoration: BoxDecoration(
-          color: isActive ? Colors.black : Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(30), // 🔥 fully pill shape
+
+          gradient: isActive
+              ? LinearGradient(
+                  colors: [
+                    Colors.green.shade600,
+                    Colors.green.shade400,
+                  ],
+                )
+              : null,
+
+          color: isActive ? null : Colors.white,
+
           boxShadow: [
-            if (!isActive)
-              const BoxShadow(
-                color: Colors.black12,
-                blurRadius: 6,
-                offset: Offset(0, 3),
-              ),
+            BoxShadow(
+              color: Colors.black.withOpacity(isActive ? 0.12 : 0.06),
+              blurRadius: isActive ? 12 : 8,
+              offset: const Offset(0, 4),
+            ),
           ],
+
           border: Border.all(
-            color: isActive ? Colors.black : Colors.grey.shade300,
+            color: isActive ? Colors.green.shade600 : Colors.grey.shade200,
           ),
         ),
+
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -45,13 +60,15 @@ class CategoryCard extends StatelessWidget {
               size: 18,
               color: isActive ? Colors.white : Colors.black87,
             ),
+
             const SizedBox(width: 6),
+
             Text(
               title,
               style: TextStyle(
                 fontSize: 13,
                 color: isActive ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],

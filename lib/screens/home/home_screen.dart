@@ -13,7 +13,7 @@ import '../../widgets/search_bar_widget.dart';
 import '../../widgets/section_title.dart';
 import '../../widgets/top_bar.dart';
 
-import '../../widgets/agent_section.dart'; // ✅ NEW IMPORT
+import '../../widgets/agent_section.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -47,16 +47,19 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              /// TOP BAR
               const TopBar(),
               const SizedBox(height: 30),
 
+              /// HERO
               const HeroSection(),
               const SizedBox(height: 30),
 
+              /// SEARCH
               const SearchBarWidget(),
               const SizedBox(height: 30),
 
-              /// PROPERTY TYPES
+              /// PROPERTY TYPES (HORIZONTAL)
               SizedBox(
                 height: 110,
                 child: ListView(
@@ -107,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 30),
 
-              /// CATEGORY SECTION
+              /// CATEGORY SECTION (HORIZONTAL SCROLL FIXED)
               const SectionTitle(title: "Browse by Category"),
               const SizedBox(height: 20),
 
@@ -119,33 +122,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: const TextStyle(color: Colors.red),
                 )
               else
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: categoryProvider.categories.length,
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 15,
-                    mainAxisSpacing: 15,
-                    childAspectRatio: 1.2,
-                  ),
-                  itemBuilder: (context, index) {
-                    final category = categoryProvider.categories[index];
+                SizedBox(
+                  height: 130,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: categoryProvider.categories.length,
+                    itemBuilder: (context, index) {
+                      final category = categoryProvider.categories[index];
 
-                    return CategoryBox(
-                      category: category,
-                      color: Colors.green.shade50,
-                      onTap: () {
-                        debugPrint("Category: ${category.name}");
-                      },
-                    );
-                  },
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: CategoryBox(
+                          category: category,
+                          color: Colors.green.shade50,
+                          onTap: () {
+                            debugPrint("Category: ${category.name}");
+                          },
+                        ),
+                      );
+                    },
+                  ),
                 ),
 
               const SizedBox(height: 30),
 
-              /// AGENTS (CLEAN + REUSABLE SECTION)
+              /// TOP AGENTS
               const AgentSection(),
             ],
           ),
