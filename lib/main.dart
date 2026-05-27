@@ -6,14 +6,19 @@ import 'package:dio/dio.dart';
 import 'screens/home/splash_screen.dart';
 
 import 'providers/category_provider.dart';
+import 'providers/property_provider.dart';
+
 import 'repositories/category_repository.dart';
+import 'repositories/property_repository.dart';
+
 import 'services/category_service.dart';
+import 'services/property_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   /// =========================
-  /// LOAD ENV FILE SAFELY
+  /// LOAD ENV FILE
   /// =========================
   try {
     await dotenv.load(fileName: ".env");
@@ -34,7 +39,7 @@ Future<void> main() async {
   debugPrint("🌐 API URL: $apiUrl");
 
   /// =========================
-  /// SETUP DIO
+  /// DIO SETUP
   /// =========================
   final dio = Dio(
     BaseOptions(
@@ -49,11 +54,19 @@ Future<void> main() async {
   );
 
   /// =========================
-  /// LAYERS
+  /// SERVICES
   /// =========================
   final categoryService = CategoryService(dio: dio);
+  final propertyService = PropertyService(dio: dio);
+
+  /// =========================
+  /// REPOSITORIES
+  /// =========================
   final categoryRepository =
       CategoryRepository(categoryService: categoryService);
+
+  final propertyRepository =
+      PropertyRepository(service: propertyService);
 
   /// =========================
   /// RUN APP
@@ -61,9 +74,17 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
+        /// CATEGORY PROVIDER
         ChangeNotifierProvider(
           create: (_) => CategoryProvider(
             repository: categoryRepository,
+          ),
+        ),
+
+        /// PROPERTY PROVIDER (🔥 FIXED)
+        ChangeNotifierProvider(
+          create: (_) => PropertyProvider(
+            repository: propertyRepository,
           ),
         ),
       ],

@@ -19,7 +19,9 @@ class ApiClient {
       ),
     );
 
-    /// 🔥 Interceptors (VERY IMPORTANT for debugging)
+    // =========================
+    // LOGGING INTERCEPTOR
+    // =========================
     dio.interceptors.add(
       LogInterceptor(
         request: true,
@@ -30,61 +32,63 @@ class ApiClient {
     );
   }
 
-  /// =========================
-  /// GET
-  /// =========================
+  // =========================
+  // GET
+  // =========================
   Future<Response> get(String path) async {
     try {
-      final response = await dio.get(path);
-      return response;
+      return await dio.get(path);
     } on DioException catch (e) {
       _handleError("GET", e);
       rethrow;
     }
   }
 
-  /// =========================
-  /// POST
-  /// =========================
-  Future<Response> post(String path, dynamic data) async {
+  // =========================
+  // POST (FIXED)
+  // =========================
+  Future<Response> post(
+    String path, {
+    dynamic data,
+  }) async {
     try {
-      final response = await dio.post(path, data: data);
-      return response;
+      return await dio.post(path, data: data);
     } on DioException catch (e) {
       _handleError("POST", e);
       rethrow;
     }
   }
 
-  /// =========================
-  /// PATCH
-  /// =========================
-  Future<Response> patch(String path, dynamic data) async {
+  // =========================
+  // PATCH (FIXED)
+  // =========================
+  Future<Response> patch(
+    String path, {
+    dynamic data,
+  }) async {
     try {
-      final response = await dio.patch(path, data: data);
-      return response;
+      return await dio.patch(path, data: data);
     } on DioException catch (e) {
       _handleError("PATCH", e);
       rethrow;
     }
   }
 
-  /// =========================
-  /// DELETE
-  /// =========================
+  // =========================
+  // DELETE
+  // =========================
   Future<Response> delete(String path) async {
     try {
-      final response = await dio.delete(path);
-      return response;
+      return await dio.delete(path);
     } on DioException catch (e) {
       _handleError("DELETE", e);
       rethrow;
     }
   }
 
-  /// =========================
-  /// ERROR HANDLER
-  /// =========================
+  // =========================
+  // ERROR HANDLER
+  // =========================
   void _handleError(String method, DioException e) {
     if (kDebugMode) {
       debugPrint("❌ API $method ERROR:");
