@@ -1,14 +1,16 @@
 // lib/widgets/property_card.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../api/user_property_favorite_api.dart';
 
-class PropertyCard extends StatelessWidget {
+class PropertyCard extends StatefulWidget {
   final String image;
   final String title;
   final String price;
   final String status; // Rent / Sale
   final VoidCallback? onTap;
-  final Map<String, dynamic>? propertyData; // ✅ Add propertyData
+  final Map<String, dynamic>? propertyData;
+  final int? userId; // Make userId configurable
 
   const PropertyCard({
     super.key,
@@ -17,38 +19,157 @@ class PropertyCard extends StatelessWidget {
     required this.price,
     required this.status,
     this.onTap,
-    this.propertyData, // ✅ Make it optional
+    this.propertyData,
+    this.userId, // Allow passing userId from parent
   });
 
-  // Helper method inside the widget as fallback
+  @override
+  State<PropertyCard> createState() => _PropertyCardState();
+}
+
+class _PropertyCardState extends State<PropertyCard> {
+  late bool isFavorite;
+  bool isLoadingFav = false;
+
+  // Get userId from widget or use default
+  int get userId => widget.userId ?? 1; // Fallback, but should be provided
+
+  @override
+  void initState() {
+    super.initState();
+    isFavorite = false;
+    _loadFavoriteStatus();
+  }
+
+  @override
+  void didUpdateWidget(PropertyCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reload favorite status if property ID changes
+    if (widget.propertyData?['id'] != oldWidget.propertyData?['id']) {
+      _loadFavoriteStatus();
+    }
+  }
+
+  Future<void> _loadFavoriteStatus() async {
+    final propertyId = widget.propertyData?['id'];
+    if (propertyId == null || userId <= 0) return;
+
+    try {
+      final result = await UserPropertyFavoriteApi.isFavorite(
+        userId,
+        propertyId,
+      );
+
+      if (mounted) {
+        setState(() {
+          isFavorite = result;
+        });
+      }
+    } catch (e) {
+      debugPrint("Failed to load favorite status: $e");
+      if (mounted) {
+        setState(() {
+          isFavorite = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final propertyId = widget.propertyData?['id'];
+    if (propertyId == null || userId <= 0) return;
+
+    if (isLoadingFav) return;
+
+    setState(() {
+      isLoadingFav = true;
+    });
+
+    try {
+      bool success = false;
+      
+      if (isFavorite) {
+        final result = await UserPropertyFavoriteApi.removeFavorite(
+          userId,
+          propertyId,
+        );
+        success = result['success'] == true;
+        if (success && mounted) {
+          setState(() {
+            isFavorite = false;
+          });
+        }
+      } else {
+        final result = await UserPropertyFavoriteApi.addFavorite(
+          userId,
+          propertyId,
+        );
+        success = result['success'] == true;
+        if (success && mounted) {
+          setState(() {
+            isFavorite = true;
+          });
+        }
+      }
+
+      // Show feedback if operation failed
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isFavorite 
+                ? 'Failed to remove from favorites' 
+                : 'Failed to add to favorites',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("Favorite error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An error occurred: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingFav = false;
+        });
+      }
+    }
+  }
+
   String _formatPrice(String price) {
     try {
-      // Remove any non-numeric characters
-      final cleanPrice = price.replaceAll(RegExp(r'[^0-9.]'), '');
-      final doubleValue = double.tryParse(cleanPrice) ?? 0;
+      // Handle different price formats
+      String cleanPrice = price.replaceAll(RegExp(r'[^0-9.]'), '');
+      
+      // Handle empty or invalid price
+      if (cleanPrice.isEmpty) return 'TSh 0';
+      
+      double doubleValue = double.tryParse(cleanPrice) ?? 0;
+      
+      // Format with commas
       final formatter = NumberFormat('#,###', 'en_US');
-      final formatted = formatter.format(doubleValue);
-      return 'TSh $formatted';
+      return 'TSh ${formatter.format(doubleValue)}';
     } catch (e) {
+      debugPrint('Price formatting error: $e');
       return 'TSh $price';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isRent = status.toLowerCase() == "rent";
-    final formattedPrice = _formatPrice(price);
+    final isRent = widget.status.toLowerCase() == "rent";
+    final formattedPrice = _formatPrice(widget.price);
 
     return GestureDetector(
-      onTap: onTap ?? () {
-        // Default behavior if onTap is not provided
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Viewing ${title.isNotEmpty ? title : 'property'}'),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      },
+      onTap: widget.onTap ?? _defaultOnTap,
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -64,59 +185,85 @@ class PropertyCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// IMAGE + BADGES
+            // IMAGE SECTION
             ClipRRect(
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(16),
               ),
               child: Stack(
                 children: [
-                  /// IMAGE
+                  // Image with loading state
                   Image.network(
-                    image,
+                    widget.image,
                     height: 150,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      height: 150,
-                      color: Colors.grey[200],
-                      child: const Icon(
-                        Icons.broken_image,
-                        color: Colors.grey,
-                        size: 40,
-                      ),
-                    ),
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return Container(
                         height: 150,
                         color: Colors.grey[200],
-                        child: const Center(
-                          child: CircularProgressIndicator(),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded / 
+                                  loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
                         ),
                       );
                     },
-                  ),
-
-                  /// FAVORITE ICON
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.favorite_border,
-                        size: 18,
-                        color: Colors.red,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 150,
+                      color: Colors.grey[200],
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                          SizedBox(height: 4),
+                          Text(
+                            'Image not available',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                        ],
                       ),
                     ),
                   ),
 
-                  /// RENT / SALE BADGE
+                  // FAVORITE BUTTON
+                  if (userId > 0) // Only show if user is logged in
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: InkWell(
+                        onTap: _toggleFavorite,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            shape: BoxShape.circle,
+                          ),
+                          child: isLoadingFav
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.red,
+                                  ),
+                                )
+                              : Icon(
+                                  isFavorite
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  size: 18,
+                                  color: Colors.red,
+                                ),
+                        ),
+                      ),
+                    ),
+
+                  // STATUS BADGE
                   Positioned(
                     top: 8,
                     left: 8,
@@ -130,7 +277,7 @@ class PropertyCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        status.toUpperCase(),
+                        widget.status.toUpperCase(),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
@@ -143,41 +290,33 @@ class PropertyCard extends StatelessWidget {
               ),
             ),
 
-            /// CONTENT
+            // CONTENT
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  /// PRICE (FORMATTED)
                   Text(
                     formattedPrice,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                       color: Color(0xFF22C55E),
                     ),
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  /// TITLE
-                  Text(
-                    title,
                     maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.title,
+                    maxLines: 2, // Changed to 2 for better readability
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: Colors.black87,
                     ),
                   ),
-
                   const SizedBox(height: 6),
-
-                  /// STATUS INFO
                   Row(
                     children: [
                       Icon(
@@ -200,14 +339,15 @@ class PropertyCard extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(10),
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Text(
                           'View',
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.grey,
+                            color: Colors.blue,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -218,6 +358,16 @@ class PropertyCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _defaultOnTap() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Viewing ${widget.title}'),
+        duration: const Duration(seconds: 1),
       ),
     );
   }

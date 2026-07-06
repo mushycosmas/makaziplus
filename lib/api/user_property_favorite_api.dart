@@ -33,7 +33,7 @@ class UserPropertyFavoriteApi {
     }
   }
 
-  static Future<http.Response> _post(String endpoint, {String? token}) async {
+  static Future<http.Response> _post(String endpoint, {String? token, Map<String, dynamic>? body}) async {
     try {
       final url = Uri.parse("$baseUrl$endpoint");
       
@@ -49,6 +49,7 @@ class UserPropertyFavoriteApi {
       final response = await http.post(
         url,
         headers: headers,
+        body: body != null ? jsonEncode(body) : null,
       ).timeout(const Duration(seconds: 30));
 
       return response;
@@ -57,7 +58,7 @@ class UserPropertyFavoriteApi {
     }
   }
 
-  static Future<http.Response> _delete(String endpoint, {String? token}) async {
+  static Future<http.Response> _delete(String endpoint, {String? token, Map<String, dynamic>? body}) async {
     try {
       final url = Uri.parse("$baseUrl$endpoint");
       
@@ -73,11 +74,38 @@ class UserPropertyFavoriteApi {
       final response = await http.delete(
         url,
         headers: headers,
+        body: body != null ? jsonEncode(body) : null,
       ).timeout(const Duration(seconds: 30));
 
       return response;
     } catch (e) {
       rethrow;
+    }
+  }
+
+  // =========================
+  // CHECK IF PROPERTY IS IN FAVORITES (SIMPLE)
+  // =========================
+  /// Check if property is in favorites - returns bool directly
+  static Future<bool> isFavorite(
+    int userId,
+    int propertyId, {
+    String? token,
+  }) async {
+    try {
+      final response = await _get(
+        '/favorites/$userId/$propertyId',
+        token: token,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['isFavorite'] ?? false;
+      }
+      return false;
+    } catch (e) {
+      debugPrint("isFavorite error: $e");
+      return false;
     }
   }
 
@@ -195,7 +223,7 @@ class UserPropertyFavoriteApi {
   }
 
   // =========================
-  // GET USER FAVORITES
+  // GET USER FAVORITES (RETURNS MAP)
   // =========================
   /// Get all favorite properties for a user
   /// Endpoint: GET /favorites/user/{userId}
@@ -286,7 +314,63 @@ class UserPropertyFavoriteApi {
   }
 
   // =========================
-  // CHECK IF PROPERTY IS FAVORITED
+  // GET USER FAVORITES AS LIST (FIXED)
+  // =========================
+  /// Get all favorite properties for a user as a List
+  /// Returns List<Map<String, dynamic>> directly
+  static Future<List<Map<String, dynamic>>> getUserFavoritesList(
+    int userId, {
+    int page = 1,
+    int limit = 20,
+    String? token,
+  }) async {
+    try {
+      final result = await getUserFavorites(
+        userId,
+        page: page,
+        limit: limit,
+        token: token,
+      );
+
+      if (result['success'] == true) {
+        final List<dynamic> data = result['data'] ?? [];
+        return data
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint("Error getting favorites list: $e");
+      return [];
+    }
+  }
+
+  // =========================
+  // GET FAVORITE PROPERTY IDS (NEW)
+  // =========================
+  /// Get just the property IDs from user favorites
+  static Future<List<int>> getUserFavoritePropertyIds(
+    int userId, {
+    String? token,
+  }) async {
+    try {
+      final result = await getUserFavorites(userId, token: token);
+      
+      if (result['success'] == true) {
+        final List<dynamic> favorites = result['data'] ?? [];
+        return favorites
+            .map((item) => item['propertyId'] as int)
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint("Error getting favorite property IDs: $e");
+      return [];
+    }
+  }
+
+  // =========================
+  // CHECK IF PROPERTY IS FAVORITED (DETAILED)
   // =========================
   /// Check if a specific property is in user's favorites
   /// Endpoint: GET /favorites/check/{userId}/{propertyId}
@@ -334,6 +418,29 @@ class UserPropertyFavoriteApi {
         'isFavorited': false,
         'message': 'Network error: ${e.toString()}',
       };
+    }
+  }
+
+  // =========================
+  // IS FAVORITED (SIMPLE BOOL)
+  // =========================
+  /// Simplified method to check if property is favorited
+  /// Returns bool directly
+  static Future<bool> isFavoritedSimple(
+    int userId,
+    int propertyId, {
+    String? token,
+  }) async {
+    try {
+      final result = await isPropertyFavorited(
+        userId, 
+        propertyId,
+        token: token,
+      );
+      return result['isFavorited'] ?? false;
+    } catch (e) {
+      debugPrint("Error checking if favorited: $e");
+      return false;
     }
   }
 
@@ -389,6 +496,24 @@ class UserPropertyFavoriteApi {
   }
 
   // =========================
+  // GET FAVORITE COUNT (SIMPLE)
+  // =========================
+  /// Simplified method to get favorite count
+  /// Returns int directly
+  static Future<int> getFavoriteCountSimple(
+    int propertyId, {
+    String? token,
+  }) async {
+    try {
+      final result = await getFavoriteCount(propertyId, token: token);
+      return result['count'] ?? 0;
+    } catch (e) {
+      debugPrint("Error getting favorite count: $e");
+      return 0;
+    }
+  }
+
+  // =========================
   // TOGGLE FAVORITE
   // =========================
   /// Toggle favorite status (add if not favorited, remove if favorited)
@@ -438,6 +563,24 @@ class UserPropertyFavoriteApi {
   }
 
   // =========================
+  // TOGGLE FAVORITE (SIMPLE BOOL)
+  // =========================
+  /// Toggle favorite and return new status
+  static Future<bool> toggleFavoriteSimple(
+    int userId,
+    int propertyId, {
+    String? token,
+  }) async {
+    try {
+      final result = await toggleFavorite(userId, propertyId, token: token);
+      return result['success'] == true;
+    } catch (e) {
+      debugPrint("Error toggling favorite: $e");
+      return false;
+    }
+  }
+
+  // =========================
   // BULK DELETE FAVORITES
   // =========================
   /// Remove multiple properties from favorites
@@ -459,24 +602,13 @@ class UserPropertyFavoriteApi {
         };
       }
 
-      final url = Uri.parse("$baseUrl/favorites/bulk/$userId");
-      
-      final headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
-      
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
-      }
-
-      final response = await http.delete(
-        url,
-        headers: headers,
-        body: jsonEncode({
+      final response = await _delete(
+        '/favorites/bulk/$userId',
+        token: token,
+        body: {
           'propertyIds': propertyIds,
-        }),
-      ).timeout(const Duration(seconds: 30));
+        },
+      );
 
       if (kDebugMode) {
         print('📡 Status: ${response.statusCode}');
@@ -563,84 +695,145 @@ class UserPropertyFavoriteApi {
   }
 
   // =========================
+  // GET RECENTLY FAVORITED AS LIST
+  // =========================
+  /// Get recently favorited properties as List
+  static Future<List<Map<String, dynamic>>> getRecentlyFavoritedList(
+    int userId, {
+    int limit = 10,
+    String? token,
+  }) async {
+    try {
+      final result = await getRecentlyFavorited(
+        userId,
+        limit: limit,
+        token: token,
+      );
+
+      if (result['success'] == true) {
+        final List<dynamic> data = result['data'] ?? [];
+        return data
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint("Error getting recent favorites list: $e");
+      return [];
+    }
+  }
+
+  // =========================
   // GET FAVORITE PROPERTIES WITH DETAILS
   // =========================
   /// Get user favorites with full property details
   /// Endpoint: GET /favorites/user/{userId}/with-details
-  static Future<Map<String, dynamic>> getUserFavoritesWithDetails(
+ static Future<Map<String, dynamic>> getUserFavoritesWithDetails(
+  int userId, {
+  int page = 1,
+  int limit = 20,
+  String? token,
+}) async {
+  try {
+    if (kDebugMode) {
+      print('📥 Fetching favorites with details for user: $userId');
+    }
+
+    final queryParams = {
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+
+    final queryString = Uri(queryParameters: queryParams).query;
+
+    final endpoint =
+        '/favorites/user/$userId${queryString.isNotEmpty ? '?$queryString' : ''}';
+
+    final response = await _get(endpoint, token: token);
+
+    if (kDebugMode) {
+      print('📡 Status: ${response.statusCode}');
+      print('📡 Response: ${response.body}');
+    }
+
+    if (response.statusCode == 200) {
+
+      final dynamic data = jsonDecode(response.body);
+
+      List<dynamic> favorites = [];
+
+      if (data is List) {
+        favorites = data;
+      } 
+      else if (data is Map && data['data'] is List) {
+        favorites = data['data'];
+      }
+
+
+      return {
+        'success': true,
+        'data': favorites,
+        'total': favorites.length,
+        'page': page,
+        'lastPage': 1,
+      };
+
+    } else {
+
+      final dynamic data = jsonDecode(response.body);
+
+      return {
+        'success': false,
+        'message': data is Map
+            ? data['message'] ?? 'Failed to fetch favorites'
+            : 'Failed to fetch favorites',
+        'data': [],
+        'total': 0,
+      };
+    }
+
+  } catch (e) {
+
+    if (kDebugMode) {
+      print('❌ Error fetching favorites: $e');
+    }
+
+    return {
+      'success': false,
+      'message': e.toString(),
+      'data': [],
+      'total': 0,
+    };
+  }
+}
+  // =========================
+  // GET FAVORITE PROPERTIES WITH DETAILS AS LIST
+  // =========================
+  /// Get user favorites with full property details as List
+  static Future<List<Map<String, dynamic>>> getUserFavoritesWithDetailsList(
     int userId, {
     int page = 1,
     int limit = 20,
     String? token,
   }) async {
     try {
-      if (kDebugMode) {
-        print('📥 Fetching favorites with details for user: $userId');
+      final result = await getUserFavoritesWithDetails(
+        userId,
+        page: page,
+        limit: limit,
+        token: token,
+      );
+
+      if (result['success'] == true) {
+        final List<dynamic> data = result['data'] ?? [];
+        return data
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList();
       }
-
-      final queryParams = {
-        'page': page.toString(),
-        'limit': limit.toString(),
-      };
-
-      final queryString = Uri(queryParameters: queryParams).query;
-      final endpoint = '/favorites/user/$userId/with-details${queryString.isNotEmpty ? '?$queryString' : ''}';
-      
-      final response = await _get(endpoint, token: token);
-
-      if (kDebugMode) {
-        print('📡 Status: ${response.statusCode}');
-        print('📡 Response: ${response.body}');
-      }
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        
-        List<dynamic> favorites = [];
-        int total = 0;
-        int currentPage = page;
-        int lastPage = 0;
-
-        if (data['data'] != null) {
-          favorites = data['data'] as List? ?? [];
-          total = data['total'] ?? favorites.length;
-          currentPage = data['page'] ?? page;
-          lastPage = data['lastPage'] ?? 0;
-        } else if (data is List) {
-          favorites = data;
-          total = data.length;
-        } else {
-          favorites = data['favorites'] ?? [];
-          total = data['total'] ?? favorites.length;
-        }
-
-        return {
-          'success': true,
-          'data': favorites,
-          'total': total,
-          'page': currentPage,
-          'lastPage': lastPage,
-        };
-      } else {
-        final data = jsonDecode(response.body);
-        return {
-          'success': false,
-          'message': data['message'] ?? 'Failed to fetch favorites with details',
-          'errors': data['errors'],
-          'data': [],
-          'total': 0,
-        };
-      }
+      return [];
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error fetching favorites with details: $e');
-      }
-      return {
-        'success': false,
-        'message': 'Network error: ${e.toString()}',
-        'data': [],
-        'total': 0,
-      };
+      debugPrint("Error getting favorites with details list: $e");
+      return [];
     }
   }
 
