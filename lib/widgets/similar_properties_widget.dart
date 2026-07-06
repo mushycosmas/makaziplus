@@ -1,9 +1,9 @@
-// lib/widgets/similar_properties_widget.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/properties_provider.dart';
 import '../screens/property/property_detail_screen.dart';
-import 'property_card.dart'; // ✅ Import PropertyCard
+import 'property_card.dart'; 
 
 class SimilarPropertiesWidget extends ConsumerWidget {
   final int currentPropertyId;

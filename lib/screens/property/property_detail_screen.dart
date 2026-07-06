@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../widgets/similar_properties_widget.dart';
+import '../../widgets/agent_contact_widget.dart';
+import '../../api/user_property_favorite_api.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final Map<String, dynamic> property;
@@ -374,79 +376,21 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   ],
 
                   // =========================
-                  // AGENT / OWNER
+                  // AGENT CONTACT WIDGET (UPDATED)
                   // =========================
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[200]!),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 30,
-                          backgroundColor: Colors.blue[100],
-                          child: Text(
-                            user?['fullName']?.substring(0, 1) ?? 'U',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[800],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                user?['fullName'] ?? 'Unknown',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                user?['email'] ?? '',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              Text(
-                                'Agent',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.blue[600],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            // TODO: Contact agent
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF22C55E),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text('Contact'),
-                        ),
-                      ],
-                    ),
+                  AgentContactWidget(
+                    fullName: user?['fullName'] ?? 'Unknown Agent',
+                    email: user?['email'],
+                    phone: user?['phone'],
+                    whatsapp: user?['whatsapp'] ?? user?['phone'],
+                    avatar: user?['avatar'],
+                    isAvailable: true,
+                    role: 'Agent',
                   ),
                   const SizedBox(height: 24),
 
                   // =========================
-                  // SIMILAR PROPERTIES (ADDED)
+                  // SIMILAR PROPERTIES
                   // =========================
                   SimilarPropertiesWidget(
                     currentPropertyId: property['id'] ?? 0,
