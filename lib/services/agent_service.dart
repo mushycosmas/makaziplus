@@ -1,20 +1,18 @@
-import 'package:dio/dio.dart';
+// lib/services/agent_service.dart
+import '../api/master_data_api.dart';
 import '../models/agent_model.dart';
 
 class AgentService {
-  final Dio dio;
-
-  AgentService({required this.dio});
-
   Future<List<Agent>> fetchAgents() async {
-    final response = await dio.get('/users');
-
-    final data = response.data;
-
-    if (data is List) {
-      return data.map((e) => Agent.fromJson(e)).toList();
+    try {
+      final data = await MasterDataApi.getAgents();
+      
+      if (data is List) {
+        return data.map((item) => Agent.fromJson(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      throw Exception('Failed to fetch agents: $e');
     }
-
-    return [];
   }
 }

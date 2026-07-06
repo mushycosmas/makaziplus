@@ -1,8 +1,9 @@
+// lib/widgets/category_box.dart
 import 'package:flutter/material.dart';
 import '../models/category_model.dart';
 
 class CategoryBox extends StatelessWidget {
-  final Category category;
+  final dynamic category; // ✅ Changed to dynamic to accept both
   final Color color;
   final VoidCallback? onTap;
 
@@ -12,6 +13,26 @@ class CategoryBox extends StatelessWidget {
     required this.color,
     this.onTap,
   });
+
+  // Helper to get category name
+  String _getCategoryName() {
+    if (category is Category) {
+      return (category as Category).name;
+    } else if (category is Map<String, dynamic>) {
+      return category['name'] ?? 'Category';
+    }
+    return 'Category';
+  }
+
+  // Helper to get total properties
+  int _getTotalProperties() {
+    if (category is Category) {
+      return (category as Category).totalProperties;
+    } else if (category is Map<String, dynamic>) {
+      return category['totalProperties'] ?? category['properties']?.length ?? 0;
+    }
+    return 0;
+  }
 
   IconData _getIcon(String name) {
     switch (name.toLowerCase()) {
@@ -23,6 +44,8 @@ class CategoryBox extends StatelessWidget {
         return Icons.landscape;
       case 'office':
         return Icons.business;
+      case 'commercial':
+        return Icons.storefront;
       default:
         return Icons.category;
     }
@@ -30,7 +53,9 @@ class CategoryBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconData = _getIcon(category.name);
+    final name = _getCategoryName();
+    final totalProps = _getTotalProperties();
+    final iconData = _getIcon(name);
 
     return Material(
       color: Colors.transparent,
@@ -58,14 +83,11 @@ class CategoryBox extends StatelessWidget {
               )
             ],
           ),
-
-          // 🔥 CENTER CONTENT
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center, // ✅ FIXED
-
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              /// ICON CONTAINER (CENTERED)
+              /// ICON CONTAINER
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -78,13 +100,12 @@ class CategoryBox extends StatelessWidget {
                   size: 22,
                 ),
               ),
-
               const SizedBox(height: 12),
 
-              /// CATEGORY NAME (CENTER)
+              /// CATEGORY NAME
               Text(
-                category.name,
-                textAlign: TextAlign.center, // ✅ FIXED
+                name,
+                textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -93,13 +114,12 @@ class CategoryBox extends StatelessWidget {
                   color: Colors.black87,
                 ),
               ),
-
               const SizedBox(height: 4),
 
-              /// LISTINGS (CENTER)
+              /// LISTINGS
               Text(
-                "${category.totalProperties} Listings",
-                textAlign: TextAlign.center, // ✅ FIXED
+                "$totalProps Listings",
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.black.withOpacity(0.6),

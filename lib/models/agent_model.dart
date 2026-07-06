@@ -1,25 +1,40 @@
+// lib/models/agent.dart
 class Agent {
   final int id;
-  final String name;
-  final String properties;
-  final String rating;
-  final String? image;
+  final String fullName;
+  final String email;
+  final String role;
+  final String createdAt;
+  final int propertyCount;
 
   Agent({
     required this.id,
-    required this.name,
-    required this.properties,
-    required this.rating,
-    this.image,
+    required this.fullName,
+    required this.email,
+    required this.role,
+    required this.createdAt,
+    required this.propertyCount,
   });
 
   factory Agent.fromJson(Map<String, dynamic> json) {
     return Agent(
-      id: json['id'],
-      name: json['name'] ?? '',
-      properties: json['properties'] ?? '0 Properties',
-      rating: json['rating']?.toString() ?? '0.0',
-      image: json['image'],
+      id: json['id'] ?? 0,
+      fullName: json['fullName'] ?? '',
+      email: json['email'] ?? '',
+      role: json['role'] ?? 'USER',
+      createdAt: json['createdAt'] ?? '',
+      propertyCount: json['_count']?['properties'] ?? 0,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'fullName': fullName,
+      'email': email,
+      'role': role,
+      'createdAt': createdAt,
+      'propertyCount': propertyCount,
+    };
   }
 }

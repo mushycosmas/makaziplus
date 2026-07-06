@@ -1,9 +1,9 @@
+// screens/home/home_screen.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
-import '../../providers/category_provider.dart';
-import '../../providers/property_provider.dart';
-import '../../providers/agent_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/categories_provider.dart';
+import '../../providers/properties_provider.dart';
+import '../../providers/agents_provider.dart';
 
 import '../../widgets/category_box.dart';
 import '../../widgets/hero_section.dart';
@@ -12,32 +12,63 @@ import '../../widgets/property_type_card.dart';
 import '../../widgets/search_bar_widget.dart';
 import '../../widgets/section_title.dart';
 import '../../widgets/top_bar.dart';
-
 import '../../widgets/agent_section.dart';
 
-class HomeScreen extends StatefulWidget {
+// ✅ Import the property detail screen
+import '../property/property_detail_screen.dart';
+
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+  // ✅ Helper to get image URL
+  String _getImageUrl(dynamic imageData) {
+    const String baseUrl = "https://makazi.nono.co.tz/uploads/";
+    const String fallbackImage =
+        "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c";
 
-class _HomeScreenState extends State<HomeScreen> {
-  @override
-  void initState() {
-    super.initState();
+    if (imageData == null) return fallbackImage;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CategoryProvider>().fetchCategories();
-      context.read<PropertyProvider>().fetchProperties();
-      context.read<AgentProvider>().fetchAgents();
-    });
+    String? imagePath;
+
+    // If it's a Map
+    if (imageData is Map) {
+      imagePath = imageData['url'] ?? imageData['image'] ?? imageData['path'];
+    }
+    // If it's a String
+    else if (imageData is String) {
+      if (imageData.startsWith('{') && imageData.contains('url:')) {
+        try {
+          final start = imageData.indexOf('url:') + 4;
+          final end = imageData.indexOf(',', start);
+          imagePath = imageData.substring(start, end).trim();
+          imagePath = imagePath.replaceAll('"', '').replaceAll("'", '');
+        } catch (e) {
+          imagePath = imageData;
+        }
+      } else {
+        imagePath = imageData;
+      }
+    }
+    // If it's a List
+    else if (imageData is List && imageData.isNotEmpty) {
+      return _getImageUrl(imageData.first);
+    }
+
+    if (imagePath != null && imagePath.isNotEmpty) {
+      if (imagePath.startsWith('http')) {
+        return imagePath;
+      }
+      return '$baseUrl$imagePath';
+    }
+
+    return fallbackImage;
   }
 
   @override
-  Widget build(BuildContext context) {
-    final categoryProvider = context.watch<CategoryProvider>();
-    final propertyProvider = context.watch<PropertyProvider>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categoriesAsync = ref.watch(categoriesProvider);
+    final propertiesAsync = ref.watch(propertiesProvider);
+    final agentsAsync = ref.watch(agentsProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -59,7 +90,10 @@ class _HomeScreenState extends State<HomeScreen> {
               const SearchBarWidget(),
               const SizedBox(height: 30),
 
-              /// PROPERTY TYPES (HORIZONTAL)
+              /// PROPERTY TYPES
+              const SectionTitle(title: "Property Types"),
+              const SizedBox(height: 15),
+
               SizedBox(
                 height: 110,
                 child: ListView(
@@ -81,73 +115,165 @@ class _HomeScreenState extends State<HomeScreen> {
               const SectionTitle(title: "Featured Properties"),
               const SizedBox(height: 20),
 
-              if (propertyProvider.isLoading)
-                const Center(child: CircularProgressIndicator())
-              else if (propertyProvider.properties.isEmpty)
-                const Text("No properties found")
-              else
-                SizedBox(
-                  height: 330,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: propertyProvider.properties.length,
-                    itemBuilder: (context, index) {
-                      final p = propertyProvider.properties[index];
+              propertiesAsync.when(
+                data: (properties) {
+                  if (properties.isEmpty) {
+                    return const Text(
+                      "No properties found",
+                      style: TextStyle(color: Colors.grey),
+                    );
+                  }
+                  return SizedBox(
+                    height: 240,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: properties.length > 5 ? 5 : properties.length,
+                      itemBuilder: (context, index) {
+                        final p = properties[index];
+                        
+                        // ✅ Use the helper to get image URL
+                        final imageUrl = _getImageUrl(p['images']);
 
-                      final imageUrl = (p.images.isNotEmpty)
-                          ? "https://makazi.nono.co.tz/uploads/${p.images.first}"
-                          : "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c";
-
-                      return PropertyCard(
-                        image: imageUrl,
-                        title: p.title,
-                        price: "TZS ${p.price}",
-                        location: p.status,
-                      );
-                    },
+                        return Container(
+                          width: MediaQuery.of(context).size.width * 0.45,
+                          margin: const EdgeInsets.only(right: 12),
+                          child: PropertyCard(
+                            image: imageUrl,
+                            title: p['title'] ?? 'Property',
+                            price: p['price']?.toString() ?? '0',
+                            status: p['status'] ?? 'Available',
+                            propertyData: p, // ✅ Pass full property data
+                            onTap: () {
+                              // ✅ Navigate to property detail screen
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => PropertyDetailScreen(
+                                    property: p,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: CircularProgressIndicator(),
                   ),
                 ),
+                error: (error, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Column(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red[300], size: 40),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Failed to load properties',
+                          style: TextStyle(color: Colors.red[300]),
+                        ),
+                        const SizedBox(height: 8),
+                        ElevatedButton(
+                          onPressed: () => ref.refresh(propertiesProvider),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
               const SizedBox(height: 30),
 
-              /// CATEGORY SECTION (HORIZONTAL SCROLL FIXED)
+              /// CATEGORY SECTION
               const SectionTitle(title: "Browse by Category"),
               const SizedBox(height: 20),
 
-              if (categoryProvider.isLoading)
-                const Center(child: CircularProgressIndicator())
-              else if (categoryProvider.errorMessage != null)
-                Text(
-                  categoryProvider.errorMessage!,
-                  style: const TextStyle(color: Colors.red),
-                )
-              else
-                SizedBox(
-                  height: 130,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: categoryProvider.categories.length,
-                    itemBuilder: (context, index) {
-                      final category = categoryProvider.categories[index];
-
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: CategoryBox(
-                          category: category,
-                          color: Colors.green.shade50,
-                          onTap: () {
-                            debugPrint("Category: ${category.name}");
-                          },
-                        ),
-                      );
-                    },
+              categoriesAsync.when(
+                data: (categories) {
+                  if (categories.isEmpty) {
+                    return const Text(
+                      "No categories found",
+                      style: TextStyle(color: Colors.grey),
+                    );
+                  }
+                  return SizedBox(
+                    height: 130,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: categories.length > 6 ? 6 : categories.length,
+                      itemBuilder: (context, index) {
+                        final category = categories[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: CategoryBox(
+                            category: category,
+                            color: Colors.green.shade50,
+                            onTap: () {
+                              debugPrint("Category: ${category['name']}");
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: CircularProgressIndicator(),
                   ),
                 ),
+                error: (error, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Column(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red[300], size: 40),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Failed to load categories',
+                          style: TextStyle(color: Colors.red[300]),
+                        ),
+                        const SizedBox(height: 8),
+                        ElevatedButton(
+                          onPressed: () => ref.refresh(categoriesProvider),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
               const SizedBox(height: 30),
 
-              /// TOP AGENTS
-              const AgentSection(),
+              /// AGENTS
+              agentsAsync.when(
+                data: (agents) => const AgentSection(),
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+                error: (error, _) => const SizedBox.shrink(),
+              ),
+
+              const SizedBox(height: 20),
             ],
           ),
         ),
