@@ -517,48 +517,145 @@ class PropertyManageApi {
   // =========================
   // SEARCH PROPERTIES
   // =========================
-  static Future<Map<String, dynamic>> searchProperties({
-    required String query,
-    int page = 1,
-    int limit = 20,
-    String? token,
-  }) async {
-    try {
-      final queryParams = {
-        'q': query,
-        'page': page.toString(),
-        'limit': limit.toString(),
-      };
 
-      final queryString = Uri(queryParameters: queryParams).query;
-      final endpoint = '/properties/search?$queryString';
-      
-      final response = await _get(endpoint, token: token);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return {
-          'success': true,
-          'data': data['data'] ?? data,
-          'total': data['total'] ?? 0,
-          'page': data['page'] ?? page,
-          'lastPage': data['lastPage'] ?? 0,
-        };
-      } else {
-        return {
-          'success': false,
-          'message': 'Failed to search properties',
-        };
-      }
-    } catch (e) {
+// =========================
+// SEARCH PROPERTIES
+// =========================// =========================
+// SEARCH PROPERTIES (Client-Side Filtering)
+// =========================
+static Future<Map<String, dynamic>> searchProperties({
+  required String query,
+  int page = 1,
+  int limit = 20,
+  String? token,
+}) async {
+  try {
+    // If query is empty, return empty results
+    if (query.trim().isEmpty) {
       return {
-        'success': false,
-        'message': e.toString(),
+        'success': true,
+        'data': [],
+        'total': 0,
+        'page': 1,
+        'lastPage': 0,
       };
     }
-  }
 
-  // =========================
+    final bool debug = true;
+    
+    if (debug) {
+      print('🔍 Searching for: "$query"');
+    }
+
+    // Get ALL properties first
+    final response = await _get('/properties', token: token);
+
+    if (debug) {
+      print('📡 Response status: ${response.statusCode}');
+    }
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final allProperties = data['data'] ?? [];
+      
+      if (debug) {
+        print('📡 Total properties: ${allProperties.length}');
+      }
+
+      // Client-side filtering - search in ALL fields
+      final searchLower = query.trim().toLowerCase();
+      final filteredProperties = allProperties.where((property) {
+        // Get all searchable fields from the property
+        final id = property['id']?.toString().toLowerCase() ?? '';
+        final title = property['title']?.toString().toLowerCase() ?? '';
+        final description = property['description']?.toString().toLowerCase() ?? '';
+        final price = property['price']?.toString().toLowerCase() ?? '';
+        final currency = property['currency']?.toString().toLowerCase() ?? '';
+        final status = property['status']?.toString().toLowerCase() ?? '';
+        final bedrooms = property['bedrooms']?.toString().toLowerCase() ?? '';
+        final bathrooms = property['bathrooms']?.toString().toLowerCase() ?? '';
+        final size = property['size']?.toString().toLowerCase() ?? '';
+        final yearBuilt = property['yearBuilt']?.toString().toLowerCase() ?? '';
+        
+        // Nested fields - User
+        final userFullName = property['user']?['fullName']?.toString().toLowerCase() ?? '';
+        final userEmail = property['user']?['email']?.toString().toLowerCase() ?? '';
+        final userPhone = property['user']?['phone']?.toString().toLowerCase() ?? '';
+        
+        // Nested fields - Category
+        final categoryName = property['category']?['name']?.toString().toLowerCase() ?? '';
+        
+        // Nested fields - Ward, District, Region, Country
+        final wardName = property['ward']?['name']?.toString().toLowerCase() ?? '';
+        final districtName = property['ward']?['district']?['name']?.toString().toLowerCase() ?? '';
+        final regionName = property['ward']?['district']?['region']?['name']?.toString().toLowerCase() ?? '';
+        final countryName = property['ward']?['district']?['region']?['country']?['name']?.toString().toLowerCase() ?? '';
+        
+        // Nested fields - Amenities
+        final amenities = property['amenities'] as List? ?? [];
+        final amenityNames = amenities.map((a) {
+          return a['amenity']?['name']?.toString().toLowerCase() ?? '';
+        }).join(' ');
+        
+        // Check if ANY field contains the search term
+        return id.contains(searchLower) ||
+               title.contains(searchLower) ||
+               description.contains(searchLower) ||
+               price.contains(searchLower) ||
+               currency.contains(searchLower) ||
+               status.contains(searchLower) ||
+               bedrooms.contains(searchLower) ||
+               bathrooms.contains(searchLower) ||
+               size.contains(searchLower) ||
+               yearBuilt.contains(searchLower) ||
+               userFullName.contains(searchLower) ||
+               userEmail.contains(searchLower) ||
+               userPhone.contains(searchLower) ||
+               categoryName.contains(searchLower) ||
+               wardName.contains(searchLower) ||
+               districtName.contains(searchLower) ||
+               regionName.contains(searchLower) ||
+               countryName.contains(searchLower) ||
+               amenityNames.contains(searchLower);
+      }).toList();
+
+      if (debug) {
+        print('📡 Found ${filteredProperties.length} matching properties');
+        if (filteredProperties.isNotEmpty) {
+          print('📡 First match: ${filteredProperties[0]['title']}');
+        }
+      }
+
+      // Apply pagination on the filtered results
+      final startIndex = (page - 1) * limit;
+      final endIndex = startIndex + limit;
+      final paginatedResults = filteredProperties.sublist(
+        startIndex,
+        endIndex > filteredProperties.length ? filteredProperties.length : endIndex,
+      );
+
+      return {
+        'success': true,
+        'data': paginatedResults,
+        'total': filteredProperties.length,
+        'page': page,
+        'lastPage': (filteredProperties.length / limit).ceil(),
+      };
+    } else {
+      return {
+        'success': false,
+        'message': 'Failed to fetch properties: ${response.statusCode}',
+      };
+    }
+  } catch (e) {
+   
+    return {
+      'success': false,
+      'message': e.toString(),
+    };
+  }
+}
+// =========================
   // UPLOAD PROPERTY IMAGES
   // =========================
   static Future<Map<String, dynamic>> uploadPropertyImages(

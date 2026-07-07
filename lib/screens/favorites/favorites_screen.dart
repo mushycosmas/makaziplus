@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../api/user_property_favorite_api.dart';
-import '../../utils/price_formatter.dart'; // Import your price formatter
+import '../../utils/price_formatter.dart';
+import '../../widgets/property_card.dart';
 import '../property/property_detail_screen.dart';
 
 class FavoritesScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class FavoritesScreen extends StatefulWidget {
 class _FavoritesScreenState extends State<FavoritesScreen> {
   bool isLoading = true;
   List<Map<String, dynamic>> favorites = [];
+  Set<int> favoriteIds = {};
 
   @override
   void initState() {
@@ -36,8 +38,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       );
 
       if (mounted) {
+        final favoritesData = List<Map<String, dynamic>>.from(result['data'] ?? []);
         setState(() {
-          favorites = List<Map<String, dynamic>>.from(result['data'] ?? []);
+          favorites = favoritesData;
+          favoriteIds = favoritesData
+              .map((f) => f['property']?['id'] as int? ?? 0)
+              .where((id) => id > 0)
+              .toSet();
           isLoading = false;
         });
       }
@@ -59,26 +66,81 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       );
 
       if (result['success'] == true) {
-        await loadFavorites();
+        setState(() {
+          favorites.removeWhere((f) => f['property']?['id'] == propertyId);
+          favoriteIds.remove(propertyId);
+        });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Removed from favorites'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        await loadFavorites();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to remove from favorites'),
+              backgroundColor: Colors.red,
             ),
           );
         }
       }
     } catch (e) {
       debugPrint('Remove favorite error: $e');
+      await loadFavorites();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   /// Get complete image URL
-  String getImageUrl(String image) {
-    if (image.isEmpty) return '';
-    if (image.startsWith('http')) return image;
-    return '${UserPropertyFavoriteApi.baseUrl}/$image';
+  String _getImageUrl(dynamic imageData) {
+    const String baseUrl = "https://makazi.nono.co.tz/uploads/";
+    const String fallbackImage =
+        "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c";
+
+    if (imageData == null) return fallbackImage;
+
+    String? imagePath;
+
+    if (imageData is Map) {
+      imagePath = imageData['url'] ?? imageData['image'] ?? imageData['path'];
+    } else if (imageData is String) {
+      if (imageData.startsWith('{') && imageData.contains('url:')) {
+        try {
+          final start = imageData.indexOf('url:') + 4;
+          final end = imageData.indexOf(',', start);
+          imagePath = imageData.substring(start, end).trim();
+          imagePath = imagePath.replaceAll('"', '').replaceAll("'", '');
+        } catch (e) {
+          imagePath = imageData;
+        }
+      } else {
+        imagePath = imageData;
+      }
+    } else if (imageData is List && imageData.isNotEmpty) {
+      return _getImageUrl(imageData.first);
+    }
+
+    if (imagePath != null && imagePath.isNotEmpty) {
+      if (imagePath.startsWith('http')) {
+        return imagePath;
+      }
+      return '$baseUrl$imagePath';
+    }
+
+    return fallbackImage;
   }
 
   /// Navigate to property details screen
@@ -90,7 +152,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           property: property,
         ),
       ),
-    );
+    ).then((_) {
+      loadFavorites();
+    });
   }
 
   @override
@@ -110,9 +174,93 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         iconTheme: const IconThemeData(
           color: Colors.black,
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: loadFavorites,
+            tooltip: 'Refresh favorites',
+          ),
+          if (favorites.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: _showClearFavoritesDialog,
+              tooltip: 'Clear all favorites',
+            ),
+        ],
       ),
       body: _buildBody(),
     );
+  }
+
+  /// Show clear favorites confirmation dialog
+  void _showClearFavoritesDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear All Favorites'),
+        content: const Text('Are you sure you want to remove all properties from favorites?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _clearAllFavorites();
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Clear All'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Clear all favorites
+  Future<void> _clearAllFavorites() async {
+    try {
+      setState(() => isLoading = true);
+      
+      for (final favorite in favorites) {
+        final propertyId = favorite['property']?['id'] as int?;
+        if (propertyId != null) {
+          await UserPropertyFavoriteApi.removeFavorite(
+            FavoritesScreen.userId,
+            propertyId,
+            token: FavoritesScreen.token,
+          );
+        }
+      }
+      
+      setState(() {
+        favorites.clear();
+        favoriteIds.clear();
+        isLoading = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All favorites cleared'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Clear favorites error: $e');
+      setState(() => isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error clearing favorites: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   /// Build the main body content
@@ -129,12 +277,36 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
     return RefreshIndicator(
       onRefresh: loadFavorites,
-      child: ListView.builder(
+      child: GridView.builder(
         padding: const EdgeInsets.all(12),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.7,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+        ),
         itemCount: favorites.length,
         itemBuilder: (context, index) {
-          final property = favorites[index]['property'] as Map<String, dynamic>? ?? {};
-          return _buildFavoriteCard(property);
+          final favorite = favorites[index];
+          final property = favorite['property'] as Map<String, dynamic>? ?? {};
+          
+          final imageUrl = _getImageUrl(property['images']);
+          final title = property['title']?.toString() ?? 'Untitled Property';
+          final price = property['price']?.toString() ?? '0';
+          final status = property['status']?.toString() ?? 'Available';
+          final propertyId = property['id'] ?? 0;
+
+          return PropertyCard(
+            key: ValueKey(propertyId),
+            image: imageUrl,
+            title: title,
+            price: price,
+            status: status,
+            propertyData: property,
+            userId: FavoritesScreen.userId,
+            initialFavorite: true,
+            onTap: () => navigateToPropertyDetails(property),
+          );
         },
       ),
     );
@@ -159,128 +331,50 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               fontSize: 16,
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Start exploring and save your favorite properties',
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 13,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: _navigateToHome, // Fixed: Using proper navigation
+            icon: const Icon(Icons.explore),
+            label: const Text('Explore Properties'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  /// Build individual favorite card
-  Widget _buildFavoriteCard(Map<String, dynamic> property) {
-    final propertyId = property['id'] ?? 0;
-    final title = property['title']?.toString() ?? 'Untitled Property';
-    final price = property['price']?.toString() ?? '0';
-    final location = property['ward']?['name']?.toString() ?? 'Unknown location';
-    final imageUrl = _getPropertyImage(property);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => navigateToPropertyDetails(property),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(10),
-          leading: _buildPropertyImage(imageUrl),
-          title: _buildPropertyTitle(title),
-          subtitle: _buildPropertyDetails(location, price),
-          trailing: _buildFavoriteButton(propertyId),
-        ),
-      ),
-    );
-  }
-
-  /// Get property image URL
-  String _getPropertyImage(Map<String, dynamic> property) {
-    if (property['images'] != null && property['images'].isNotEmpty) {
-      final image = property['images'][0]['url']?.toString() ?? '';
-      return getImageUrl(image);
+  /// Navigate to home screen properly
+  void _navigateToHome() {
+    // Option 1: Pop to go back if there's history
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      // Option 2: Replace with home screen if no history
+      Navigator.pushReplacementNamed(context, '/home');
+      // Or if you're using MaterialPageRoute:
+      // Navigator.pushReplacement(
+      //   context,
+      //   MaterialPageRoute(builder: (context) => HomeScreen()),
+      // );
     }
-    return '';
-  }
-
-  /// Build property image widget
-  Widget _buildPropertyImage(String imageUrl) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: imageUrl.isNotEmpty
-          ? Image.network(
-              imageUrl,
-              width: 70,
-              height: 70,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stack) {
-                return const Icon(
-                  Icons.home,
-                  size: 40,
-                );
-              },
-            )
-          : const Icon(
-              Icons.home,
-              size: 40,
-            ),
-    );
-  }
-
-  /// Build property title widget
-  Widget _buildPropertyTitle(String title) {
-    return Text(
-      title,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        fontWeight: FontWeight.bold,
-      ),
-    );
-  }
-
-  /// Build property details widget (location and price)
-  Widget _buildPropertyDetails(String location, String price) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 5),
-        Row(
-          children: [
-            const Icon(
-              Icons.location_on,
-              size: 14,
-              color: Colors.grey,
-            ),
-            const SizedBox(width: 5),
-            Expanded(
-              child: Text(
-                location,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 5),
-        Text(
-          price.toPrice(), // Using the extension method
-          style: const TextStyle(
-            color: Colors.green,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Build favorite button (remove from favorites)
-  Widget _buildFavoriteButton(int propertyId) {
-    return IconButton(
-      icon: const Icon(
-        Icons.favorite,
-        color: Colors.red,
-      ),
-      onPressed: () => removeFavorite(propertyId),
-    );
   }
 }

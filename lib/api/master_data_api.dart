@@ -233,4 +233,72 @@ class MasterDataApi {
       rethrow;
     }
   }
+
+
+
+  // =========================
+// SEARCH REGION BY NAME
+// =========================
+static Future<Map<String, dynamic>?> findRegionByName(
+  String regionName,
+) async {
+  final regions = await getRegions();
+
+  try {
+    return regions.cast<Map<String, dynamic>>().firstWhere(
+      (region) =>
+          region['name']
+              .toString()
+              .toLowerCase() ==
+          regionName.toLowerCase(),
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
+// =========================
+// SEARCH DISTRICT BY NAME
+// =========================
+static Future<Map<String, dynamic>?> findDistrictByName(
+  int regionId,
+  String districtName,
+) async {
+  final districts = await getDistricts(regionId);
+
+  try {
+    return districts.cast<Map<String, dynamic>>().firstWhere(
+      (district) =>
+          district['name']
+              .toString()
+              .toLowerCase() ==
+          districtName.toLowerCase(),
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
+// =========================
+// SEARCH WARD BY NAME
+// =========================
+static Future<Map<String, dynamic>?> findWardByName(
+  int districtId,
+  String wardName,
+) async {
+  final wards = await getWards(districtId);
+
+  try {
+    return wards.cast<Map<String, dynamic>>().firstWhere(
+      (ward) =>
+          ward['name']
+              .toString()
+              .toLowerCase() ==
+          wardName.toLowerCase(),
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
 }
