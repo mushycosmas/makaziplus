@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../screens/home/home_screen.dart';
-import '../screens/search/search_screen.dart';
+import '../screens/property/property_search_screen.dart';
 import '../screens/favorites/favorites_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/seller/sell_property_screen.dart';
@@ -34,7 +34,7 @@ class _MainScreenState extends State<MainScreen> {
 
     pages = [
       const HomeScreen(),
-      const SearchScreen(),
+      const PropertySearchScreen(),
       const SellPropertyScreen(),
       const FavoritesScreen(),
       const ProfileScreen(),

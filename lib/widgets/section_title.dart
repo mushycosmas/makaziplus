@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 class SectionTitle extends StatelessWidget {
   final String title;
-  final VoidCallback? onTap;
+  final VoidCallback? onSeeAll; // Changed from onTap to onSeeAll for clarity
 
   const SectionTitle({
     super.key,
     required this.title,
-    this.onTap,
+    this.onSeeAll,
   });
 
   @override
@@ -28,27 +28,28 @@ class SectionTitle extends StatelessWidget {
         ),
 
         // SEE ALL BUTTON
-        GestureDetector(
-          onTap: onTap,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Text(
-                "See all",
-                style: TextStyle(
-                  color: Color(0xFF22C55E),
-                  fontWeight: FontWeight.bold,
+        if (onSeeAll != null) // Only show if callback exists
+          GestureDetector(
+            onTap: onSeeAll,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Text(
+                  "See All",
+                  style: TextStyle(
+                    color: Color(0xFF22C55E),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              SizedBox(width: 5),
-              Icon(
-                Icons.arrow_forward,
-                color: Color(0xFF22C55E),
-                size: 18,
-              ),
-            ],
+                SizedBox(width: 5),
+                Icon(
+                  Icons.arrow_forward,
+                  color: Color(0xFF22C55E),
+                  size: 18,
+                ),
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
