@@ -8,7 +8,6 @@ import '../../providers/agents_provider.dart';
 import '../../widgets/category_box.dart';
 import '../../widgets/hero_section.dart';
 import '../../widgets/property_card.dart';
-import '../../widgets/property_type_card.dart';
 import '../../widgets/search_bar_widget.dart';
 import '../../widgets/section_title.dart';
 import '../../widgets/top_bar.dart';
@@ -19,6 +18,7 @@ import '../property/property_search_screen.dart';
 import '../property/all_properties_screen.dart';
 import '../property/all_categories_screen.dart';
 import '../agents/all_agents_screen.dart';
+// Removed: import '../agents/agent_profile_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -52,6 +52,15 @@ class HomeScreen extends ConsumerWidget {
     return fallbackImage;
   }
 
+  /// Convert API category data to include totalProperties
+  Map<String, dynamic> _prepareCategoryData(Map<String, dynamic> category) {
+    final propertyCount = category['_count']?['properties'] ?? 0;
+    return {
+      ...category,
+      'totalProperties': propertyCount,
+    };
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(categoriesProvider);
@@ -66,8 +75,11 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Top Bar
               const TopBar(),
               const SizedBox(height: 30),
+
+              // Hero Section
               const HeroSection(),
               const SizedBox(height: 30),
 
@@ -84,44 +96,6 @@ class HomeScreen extends ConsumerWidget {
                 onFilterPressed: () {
                   debugPrint("Open filters");
                 },
-              ),
-              const SizedBox(height: 30),
-
-              // PROPERTY TYPES
-              const SectionTitle(title: "Property Types"),
-              const SizedBox(height: 15),
-              SizedBox(
-                height: 110,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: const [
-                    PropertyTypeCard(
-                      icon: Icons.home,
-                      title: "All",
-                      active: true,
-                    ),
-                    PropertyTypeCard(
-                      icon: Icons.home_outlined,
-                      title: "House",
-                    ),
-                    PropertyTypeCard(
-                      icon: Icons.apartment,
-                      title: "Apartment",
-                    ),
-                    PropertyTypeCard(
-                      icon: Icons.park,
-                      title: "Land",
-                    ),
-                    PropertyTypeCard(
-                      icon: Icons.business,
-                      title: "Office",
-                    ),
-                    PropertyTypeCard(
-                      icon: Icons.store,
-                      title: "Shop",
-                    ),
-                  ],
-                ),
               ),
               const SizedBox(height: 30),
 
@@ -142,7 +116,33 @@ class HomeScreen extends ConsumerWidget {
               propertiesAsync.when(
                 data: (properties) {
                   if (properties.isEmpty) {
-                    return const Text("No properties found");
+                    return Container(
+                      height: 200,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.home_work_outlined,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              "No properties found",
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   }
 
                   return SizedBox(
@@ -177,10 +177,49 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   );
                 },
-                loading: () => const Center(
-                  child: CircularProgressIndicator(),
+                loading: () => const SizedBox(
+                  height: 200,
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
                 ),
-                error: (e, _) => const Text("Failed to load properties"),
+                error: (e, _) => Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 48,
+                          color: Colors.red.shade400,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          "Failed to load properties",
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.red.shade400,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: () => ref.refresh(propertiesProvider),
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: const Text("Retry"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 30),
 
@@ -200,18 +239,51 @@ class HomeScreen extends ConsumerWidget {
 
               categoriesAsync.when(
                 data: (categories) {
+                  if (categories.isEmpty) {
+                    return Container(
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          "No categories found",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    );
+                  }
+
                   return SizedBox(
-                    height: 130,
+                    height: 160,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       itemCount: categories.length > 6 ? 6 : categories.length,
                       itemBuilder: (context, index) {
                         final category = categories[index];
+                        
+                        // Prepare category data with totalProperties
+                        final preparedCategory = _prepareCategoryData(category);
+                        
+                        // Color palette
+                        final colors = [
+                          Colors.blue,
+                          Colors.green,
+                          Colors.orange,
+                          Colors.purple,
+                          Colors.red,
+                          Colors.pink,
+                          Colors.teal,
+                          Colors.indigo,
+                        ];
+
                         return Padding(
                           padding: const EdgeInsets.only(right: 12),
                           child: CategoryBox(
-                            category: category,
-                            color: Colors.green.shade50,
+                            category: preparedCategory,
+                            color: colors[index % colors.length],
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -228,14 +300,55 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   );
                 },
-                loading: () => const CircularProgressIndicator(),
-                error: (e, _) => const SizedBox(),
+                loading: () => const SizedBox(
+                  height: 120,
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+                error: (e, _) => Container(
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 32,
+                          color: Colors.red.shade400,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Failed to load categories",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.red.shade400,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: () => ref.refresh(categoriesProvider),
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text("Retry"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 30),
 
               // AGENTS
               SectionTitle(
-                title: "Agents",
+                title: "Top Agents",
                 onSeeAll: () {
                   Navigator.push(
                     context,
@@ -247,11 +360,9 @@ class HomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 20),
 
-              agentsAsync.when(
-                data: (agents) => const AgentSection(),
-                loading: () => const CircularProgressIndicator(),
-                error: (e, _) => const SizedBox(),
-              ),
+              // AgentSection handles its own data fetching and navigation
+              const AgentSection(),
+              const SizedBox(height: 20),
             ],
           ),
         ),
